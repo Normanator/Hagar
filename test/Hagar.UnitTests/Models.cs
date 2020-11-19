@@ -109,4 +109,20 @@ namespace Hagar.UnitTests
 
         public override string ToString() => $"{nameof(_intField)}: {_intField}, {nameof(IntProperty)}: {IntProperty}";
     }
+
+    [GenerateSerializer]
+    public class SomeBaseClass
+    {
+        [Id(0)] public string SbcString  { get; set; }
+        [Id(1)] public int    SbcInteger { get; set; }
+    }
+
+    [GenerateSerializer] // Should be inherited, but here we test explicit attrib.
+    public class SomeSubClass : SomeBaseClass
+    {
+        // Per 
+        [Id(0)] public int    SscInteger { get; set; }
+
+        [Id(1)] public string SscString  { get; set; }
+    }
 }

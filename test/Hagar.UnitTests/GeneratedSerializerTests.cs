@@ -5,6 +5,7 @@ using Hagar.Session;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System;
+using System.IO;
 using System.IO.Pipelines;
 using Xunit;
 
@@ -67,6 +68,27 @@ namespace Hagar.UnitTests
             Assert.Equal(original.GetIntField(), result.GetIntField());
             Assert.Equal(original.IntProperty, result.IntProperty);
         }
+
+        [Fact]
+        public void GeneratedSerializersRoundTripThroughSerializer_Polymorphic()
+        {
+            var original = new SomeSubClass 
+            { SbcString = "Shaggy", SbcInteger = 13, SscString = "Zoinks!", SscInteger = -1 };
+
+            var resultAsBase = RoundTripToExpectedType<SomeSubClass, SomeBaseClass>(original);
+
+            var castAsSubclass = resultAsBase as SomeSubClass;
+            Assert.NotNull(resultAsBase);
+            Assert.NotNull(castAsSubclass);
+            Assert.Equal(original.SscString, castAsSubclass.SscString);
+            Assert.Equal(original.SscInteger, castAsSubclass.SscInteger);
+
+            var resultAsSub  = RoundTripToExpectedType<SomeBaseClass, SomeSubClass>(original);
+            Assert.Equal(original.SscString,  resultAsSub.SscString);
+            Assert.Equal(original.SscInteger, resultAsSub.SscInteger);
+        }
+
+        
 
         [Fact]
         public void UnmarkedFieldsAreNotSerialized()
@@ -194,6 +216,22 @@ namespace Hagar.UnitTests
             }
 
             return result;
+        }
+
+        private TOutput RoundTripToExpectedType<TInput, TOutput>(TInput original)
+            where TInput:class 
+            where TOutput:class 
+        {
+            var sourceStream = new MemoryStream(256);
+
+            var sourceSerializer = _serviceProvider.GetService<Serializer<TInput>>();
+            sourceSerializer.Serialize(original, sourceStream);
+            sourceStream.Flush();
+            sourceStream.SetLength(sourceStream.Position);
+
+            sourceStream.Position = 0;
+            var sinkSerializer = _serviceProvider.GetService<Serializer<TOutput>>();
+            return sinkSerializer.Deserialize(sourceStream);
         }
     }
 }
